@@ -20,7 +20,7 @@ class Player
         bool     m_RightPressed;
         int      m_Health;
         int      m_MaxHealth;
-        Time     m_Lasthit;
+        Time     m_LastHit;
         float    m_Speed;
 
 

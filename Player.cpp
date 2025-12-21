@@ -29,14 +29,14 @@ void Player::spawn(IntRect arena, Vector2f resolution, int tileSize)
 
 Time Player::getLastHitTime()
 {
-    return m_Lasthit;
+    return m_LastHit;
 }
 
 bool Player::hit(Time timeHit)
 {
-    if(timeHit.asMilliseconds() - m_Lasthit.asMilliseconds() > 200)
+    if(timeHit.asMilliseconds() - m_LastHit.asMilliseconds() > 200)
     {
-        m_Lasthit = timeHit;
+        m_LastHit = timeHit;
         m_Health -= 10;
         return true;
     }
@@ -154,7 +154,7 @@ void Player::update(float elapsedTime, Vector2i mousePosition)
 
     // calculate the angle the player is facing
     float angle = (atan2(mousePosition.y - m_Resolution.y/2,
-                         mousePosition.x - m_Resolution.x/2));
+                         mousePosition.x - m_Resolution.x/2) * 180) / 3.141;
     m_Sprite.setRotation(angle);
 
 }
@@ -167,7 +167,7 @@ void Player::upgradeSpeed()
 
 void Player::upgradeHealth()
 {
-    m_Health += (START_HEALTH * .2);
+    m_MaxHealth += (START_HEALTH * .2);
 }
 
 void Player::increaseHealthLevel(int amount)
