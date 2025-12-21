@@ -15,7 +15,7 @@ int main()
     resolution.x = VideoMode::getDesktopMode().width;
     resolution.y = VideoMode::getDesktopMode().height;
 
-    RenderWindow window(VideoMode(resolution.x, resolution.y), "Zombie Arena", Style::Fullscreen);
+    RenderWindow window(VideoMode(resolution.x, resolution.y), "Zombie Arena"); // Style::Fullscreen);
     View mainView(FloatRect(0, 0, resolution.x, resolution.y));
     Clock clock;
     Time  gameTimeTotal;
@@ -134,7 +134,7 @@ int main()
                 arena.top    = 0;
                 int tileSize = 50;
 
-                player.spawn(arena, resolution, tileSize);  // arena is smaller 
+                player.spawn(arena, resolution, tileSize);  // arena is smaller than resolution
                 clock.restart();
             }
         } // end Leveling up
