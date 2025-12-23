@@ -14,7 +14,7 @@ TextureHolder::TextureHolder()
 
 sf::Texture& TextureHolder::getTexture(std::string const& filename)
 {
-    auto& m = m_s_Instance->m_Texture;  //map<std::string, Texture>
+    auto& m = m_s_Instance->m_Textures;  //map<std::string, Texture>
     auto keyValuePair = m.find(filename);
 
     if(keyValuePair != m.end()) //found

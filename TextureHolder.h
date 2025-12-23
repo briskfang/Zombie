@@ -13,7 +13,7 @@ using namespace sf;
 class TextureHolder
 {
     private:
-        std::map<std::string, Texture>m_Texture;
+        std::map<std::string, Texture>m_Textures;
         static TextureHolder* m_s_Instance;
 
     public:

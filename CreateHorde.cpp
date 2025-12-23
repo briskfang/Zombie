@@ -35,7 +35,7 @@ Zombie* createHorde(int numZombies, IntRect arena)
                 break;
             case 3: //bottom
                 x = (rand() % maxX) + minX;
-                y = minY;
+                y = maxY;
                 break;
         }
 
