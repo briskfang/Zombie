@@ -155,6 +155,14 @@ void Player::update(float elapsedTime, Vector2i mousePosition)
     // calculate the angle the player is facing
     float angle = (atan2(mousePosition.y - m_Resolution.y/2,
                          mousePosition.x - m_Resolution.x/2) * 180) / 3.141;
+    
+    /*
+    if(angle < 0)
+    {
+        angle += 360;
+    }
+    */
+
     m_Sprite.setRotation(angle);
 
 }
