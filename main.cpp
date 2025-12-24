@@ -5,14 +5,16 @@
 #include "Zombie.h"
 
 
+// FloatRect:  left, top, width, height (LTWH)
+// Vector2f:   a vector with 2 floats
+// Vector2i:   a vector with 2 intergers
+
 
 using namespace sf;
 
 
 int main()
 {
-
-
     TextureHolder holder;
 
     enum class State{ PAUSED, LEVELING_UP, GAME_OVER, PLAYING };
