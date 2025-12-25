@@ -11,6 +11,8 @@
 #include "Zombie.h"
 #include "Pickup.h"
 #include "Bullet.h"
+#include "log.h"
+
 
 
 
@@ -20,13 +22,18 @@
 // HUD: Heads-up display, info displayed on top of game while gameplay
 // wave: a common game design pattern, found in horde or survival mode. Player is presented with progressively
 //       more intense groups of enemies to defeat in successive rounds.     
+// std::ofstream logFile():     overwrite pre-existing content
+// std::ofstream appLogFile():  append to existing content
 
 
 using namespace sf;
 
-
 int main()
 {
+    Logger::init("log/zombie.log", LogLevel::INFO);
+    LOG_INFO("Game starts");
+    
+
     TextureHolder holder; // the class instance "holder" is never used.
 
     enum class State{ PAUSED, LEVELING_UP, GAME_OVER, PLAYING }; // state machine
@@ -37,7 +44,7 @@ int main()
     resolution.x = VideoMode::getDesktopMode().width;
     resolution.y = VideoMode::getDesktopMode().height;
 
-    std::cerr << "resolution: " << resolution.x << " , " << resolution.y << std::endl; // needs to include <iostream>
+    //std::cerr << "resolution: " << resolution.x << " , " << resolution.y << std::endl; // needs to include <iostream>
     RenderWindow window(VideoMode(resolution.x, resolution.y), "Zombie Arena"); // Style::Fullscreen);
     View mainView(FloatRect(0, 0, resolution.x, resolution.y));
     Clock clock;
