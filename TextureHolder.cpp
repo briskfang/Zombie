@@ -21,7 +21,7 @@ sf::Texture& TextureHolder::getTexture(std::string const& filename)
     {
         return keyValuePair->second;
     }
-    else
+    else                      // not found, then add to map<string, Texture>
     {
         auto& texture = m[filename];
         texture.loadFromFile(filename);

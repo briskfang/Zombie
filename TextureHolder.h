@@ -18,7 +18,8 @@ class TextureHolder
 
     public:
         TextureHolder();
-        static Texture& getTexture(std::string const& filename);
+        // static method, can be called via <class name>::<static method>
+        static Texture& getTexture(std::string const& filename); 
 
 };
 

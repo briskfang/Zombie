@@ -10,11 +10,21 @@ Player::Player()
 
     m_Texture.loadFromFile("graphics/player.png");
     m_Sprite.setTexture(m_Texture);
-    
+
     //m_Texture.loadFromFile("graphics/player.png");
     //m_Sprite.setTexture(m_Texture);
     m_Sprite.setOrigin(25, 25);
 }
+
+
+void Player::resetPlayerStats()
+{
+    m_Speed     = START_SPEED;
+    m_Health    = START_HEALTH;
+    m_MaxHealth = START_HEALTH;
+}
+
+
 
 void Player::spawn(IntRect arena, Vector2f resolution, int tileSize)
 {
