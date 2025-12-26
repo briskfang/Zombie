@@ -31,7 +31,9 @@ using namespace sf;
 int main()
 {
     Logger::init("log/zombie.log", LogLevel::INFO);
+    //Logger::setLevel(LogLevel::DEBUG);
     LOG_INFO("Game starts");
+    //LOG_DEBUG("Game starts, very first log after entering main() ");
     
 
     TextureHolder holder; // the class instance "holder" is never used.
@@ -39,6 +41,7 @@ int main()
     enum class State{ PAUSED, LEVELING_UP, GAME_OVER, PLAYING }; // state machine
     
     State state = State::GAME_OVER;
+    LOG_INFO("Game Initial State: GAME_OVER");
 
     Vector2f resolution;
     resolution.x = VideoMode::getDesktopMode().width;
@@ -242,6 +245,8 @@ int main()
         {
             if(event.type == Event::KeyPressed)
             {
+                LOG_INFO("KeyPressed");
+
                 if(event.key.code == Keyboard::Return && state == State::PLAYING )
                 {
                     state = State::PAUSED;
@@ -253,7 +258,10 @@ int main()
                 }
                 else if(event.key.code == Keyboard::Return && state == State::GAME_OVER)
                 {
+                    LOG_INFO("State: GameOver, and Return pressed");
                     state = State::LEVELING_UP;
+                    LOG_INFO("Set State: LEVELING_UP");
+
                     wave = 0;
                     score = 0;
 
@@ -263,9 +271,8 @@ int main()
                     clipSize      = 6;
                     fireRate      = 1;
                     player.resetPlayerStats();
-
-
                 }
+
                 if(state == State::PLAYING)
                 {
                     //load the gun
@@ -363,10 +370,12 @@ int main()
 
         if(state == State::LEVELING_UP)
         {
+            LOG_INFO("Enter State: LEVELING_UP");
             if(event.key.code == Keyboard::Num1)
             {
                 fireRate++;
                 state = State::PLAYING;
+                LOG_INFO("Set State: PLAYING");
             }
             if(event.key.code == Keyboard::Num2)
             {
@@ -395,6 +404,7 @@ int main()
             
             if(state == State::PLAYING)
             {
+                LOG_INFO("Enter state: PLAYING, and Create Zombies");
                 wave++;
                 arena.width  = 500 * wave;
                 arena.height = 500 * wave;
@@ -407,22 +417,31 @@ int main()
                 healthPickup.setArena(arena);
                 ammoPickup.setArena(arena);
 
+
                 numZombies = 5 * wave;
                 delete[] zombies;
                 zombies = createHorde(numZombies, arena);
                 numZombiesAlive = numZombies;
 
+                LOG_INFO("Play powerup sound"); 
                 powerup.play();
 
                 clock.restart();
             }
         } // end Levelling up
 
+
+
+
+        // update
         if(state == State::PLAYING)
         {
+            LOG_INFO("Enter State: PLAYING");
             Time dt = clock.restart();
             gameTimeTotal += dt;
             float dtAsSeconds = dt.asSeconds();
+
+            LOG_INFO("Set Crosshair");
             mouseScreenPosition = Mouse::getPosition();
             mouseWorldPosition  = window.mapPixelToCoords(Mouse::getPosition(), mainView);
 
@@ -433,6 +452,7 @@ int main()
 
             mainView.setCenter(player.getCenter());
 
+            LOG_INFO("Update Zombies");
             for(int i = 0; i < numZombies; i++)
             {
                 if(zombies[i].isAlive())
@@ -441,6 +461,7 @@ int main()
                 }
             }
 
+            LOG_INFO("Update bullets");
             //update all the bullets that are in-flight
             for(int i = 0; i < 100; i++)
             {
@@ -451,10 +472,12 @@ int main()
             }
 
             // update the pickups
+            LOG_INFO("Update the pickups");
             healthPickup.update(dtAsSeconds);
             ammoPickup.update(dtAsSeconds);
 
             // collision detection
+            LOG_INFO("Detect Collision");
             for(int i = 0; i < 100; i++ )
             {
                 for(int j = 0; j < numZombies; j++)
@@ -478,7 +501,7 @@ int main()
                                     state = State::LEVELING_UP;
                                 }
                             }   
-                        
+                            LOG_INFO("Bullet hits Zombie");
                             splat.play();
                         }
                     }
@@ -492,6 +515,7 @@ int main()
                 {
                     if(player.hit(gameTimeTotal))
                     {
+                        LOG_INFO("Zombie hit the player");
                         hit.play();
                     }
                     if(player.getHealth() <= 0)
@@ -507,6 +531,7 @@ int main()
             // has the player touched health pickup?
             if(player.getPosition().intersects(healthPickup.getPosition()) && healthPickup.isSpawned())
             {
+                LOG_INFO("Player touches health pickup");
                 player.increaseHealthLevel(healthPickup.gotIt());
                 pickup.play();
             }
@@ -514,6 +539,7 @@ int main()
             // has the player touched ammo pickup?
             if(player.getPosition().intersects(ammoPickup.getPosition()) && ammoPickup.isSpawned())
             {
+                LOG_INFO("Player touches ammo pickup");
                 bulletsSpare += ammoPickup.gotIt();
                 reload.play(); //? or powerup.play();
             }
@@ -526,6 +552,7 @@ int main()
             if(framesSinceLastHUDUpdate > fpsMeasurementFrameInterval)
             {
                 // update game HUD(heads-up display) text
+                LOG_INFO("Update game Heads-up display");
                 std::stringstream ssAmmo;
                 std::stringstream ssScore;
                 std::stringstream ssHiScore;
@@ -554,17 +581,21 @@ int main()
 
         } // end Playing
 
+        // draw
         if(state == State::PLAYING)
         {
             window.clear();
             window.setView(mainView);
+            LOG_INFO("Draw background");
             window.draw(background, &textureBackground);
 
+            LOG_INFO("Draw Zombies");
             for(int i = 0; i < numZombies; i++)
             {
                 window.draw(zombies[i].getSprite());
             }
 
+            LOG_INFO("Draw bullets");
             for(int i = 0; i < 100; i++)
             {
                 if(bullets[i].isInFlight())
@@ -573,17 +604,21 @@ int main()
                 }
             }
 
+            LOG_INFO("Draw player");
             window.draw(player.getSprite());
 
             if(ammoPickup.isSpawned())
             {
+                LOG_INFO("Draw ammo pickup");
                 window.draw(ammoPickup.getSprite());
             }
             if(healthPickup.isSpawned())
             {
+                LOG_INFO("Draw health pickup");
                 window.draw(healthPickup.getSprite());
             }
 
+            LOG_INFO("Draw crosshair");
             window.draw(spriteCrosshair);
 
             window.setView(hudView);
@@ -600,16 +635,19 @@ int main()
 
         if(state == State::LEVELING_UP)
         {
+            LOG_INFO("Level up");
             window.draw(spriteGameOver);
             window.draw(levelUpText);
 
         }
         if(state == State::PAUSED)
         {
+            LOG_INFO("PAUSED");
             window.draw(pausedText);
         }
         if(state == State::GAME_OVER)
         {
+            LOG_INFO("GAME OVER");
             window.draw(spriteGameOver);
             window.draw(gameOverText);
             window.draw(scoreText);
