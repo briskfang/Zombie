@@ -22,8 +22,9 @@
 // HUD: Heads-up display, info displayed on top of game while gameplay
 // wave: a common game design pattern, found in horde or survival mode. Player is presented with progressively
 //       more intense groups of enemies to defeat in successive rounds.     
-// std::ofstream logFile():     overwrite pre-existing content
-// std::ofstream appLogFile():  append to existing content
+// frame: a single static image in a sequence; generally, one main.cpp main loop is one frame.
+// Technique: Fixed time-step with variable rendering, allowing the game update at a steady rate(eg, 60HZ)
+// FPS: frames per seconds, number of images shown per seconds to create an illusion of motion.
 
 
 using namespace sf;
@@ -69,12 +70,7 @@ Initialize
     RenderWindow| similar to physical world | screen coordinates(pixels)| actions: setView, draw..    
     View        | similar to camera         | world coordinates         | actions: setCenter, zoom, setSize
 
-    btw, 
-    <sprite>.setPosition(<world coordinates>);
-    <object>.getPosition(window) returns screen coordinates
-    to change screen coordinates to world coordinates, call window.mapPixelToCoords(pixelPos, view); 
-
-
+    
     ------  mainView vs. hudView ------
     mainView: moves through the world
     hudView: UI elements stay fixed on the screen
@@ -98,18 +94,40 @@ Initialize
     VertexArray background;
     Texture textureBackground = TextureHolder::getTexture("graphics/background_sheet.png");
 
+
+    /*
+      -------------------- zombies vs. bullets creation ---------------
+      zombies: smaller amount | long  lived | pointer | on heap  | handle memory allocation automatically 
+      bullets: large   amount | short lived | array   | on stack | handle memeory allocation manually
+      Better option: using vector<Zombie> zombies(#); vector<Bullets> bullets(#);
+    
+
+    */
+
+
+    // pointer(no memory allocated yet); created via new Zombie[#], 
+    // allocated on heap(heap is much larger than stack)
+    // deleted via delete[]; 
+    // new <obj> and delete <obj> is a pair; new <object>[] and delete[] <object> is a pair 
     int numZombies;
     int numZombiesAlive;
-    Zombie* zombies = NULL;
+    Zombie* zombies = NULL;  
+    
+  
+  
+    // Bullet bullets[numBullets];  here the numBullets must be a const expression
+    // allocated on the stack, as a resource pool; be careful don't create large data on stack
+    // auto destroyed when out of scope; during game, set them as inactive if needed
+    // bullets are "short-lived", avoid dynamic allocation
+    // obj of large amount/short-lived allocated on heap: may casue allocation overhead, heap fragmentation and random stutters(GC)
 
-
-    Bullet bullets[100];
+    Bullet bullets[100]; 
     int currentBullet = 0;
     int bulletsSpare = 24;
     int bulletsInClip = 6;
     int clipSize = 6;
     float fireRate = 1;  
-    Time lastPressed; // fire button last pressed
+    Time lastPressed;     // last time shoot the bullets
 
     window.setMouseCursorVisible(true);
     Sprite spriteCrosshair;
@@ -139,15 +157,15 @@ Initialize
     Font font;
     font.loadFromFile("fonts/KOMIKAP_.ttf");
 
-    // Paused
+    // Text(const): Paused
     Text pausedText;
     pausedText.setFont(font);
     pausedText.setCharacterSize(50);
     pausedText.setFillColor(Color::White);
     pausedText.setPosition(400, 400);
-    pausedText.setString("Press Enter \n to continue");
+    pausedText.setString("Press Enter to continue");
 
-    // GameOver
+    // Text(const): GameOver
     Text gameOverText;
     gameOverText.setFont(font);
     gameOverText.setCharacterSize(50);
@@ -156,7 +174,7 @@ Initialize
     gameOverText.setString("Press Enter to play");
 
 
-    // Level up
+    // Text(const): Level up
     Text levelUpText;
     levelUpText.setFont(font);
     levelUpText.setCharacterSize(40);
@@ -164,37 +182,35 @@ Initialize
     levelUpText.setPosition(100, 250);
     std::stringstream levelUpStream;
     levelUpStream <<
-            "1 - Increased rate of fire\n" <<
-            "2 - Increased clip size(next reload)\n" <<
-            "3 - Increased max health\n" <<
-            "4 - Increased run speed\n"  <<
+            "1 - Increase rate of fire\n" <<
+            "2 - Increase clip size(next reload)\n" <<
+            "3 - Increase max health\n" <<
+            "4 - Increase run speed\n"  <<
             "5 - More and better health pickups\n" <<
             "6 - More and better ammo pickups";
     levelUpText.setString(levelUpStream.str());
 
-    // Ammo
+    // Text(dynamic): Ammo
     Text ammoText;
     ammoText.setFont(font);
     ammoText.setCharacterSize(30);
     ammoText.setFillColor(Color::White);
     ammoText.setPosition(200, 800);
     
-    // Score
+    // Text(dynamic): Score
     Text scoreText;
     scoreText.setFont(font);
     scoreText.setCharacterSize(30);
     scoreText.setFillColor(Color::White);
     scoreText.setPosition(20, 0);
 
+    // Text(loaded from file): Hi Score(highest score ever achieved in the game)
     std::ifstream inputFile("gamedata/scores.txt");
     if(inputFile.is_open())
     {
         inputFile >> hiScore;
         inputFile.close();
     }
-
-
-    // Hi Score
     Text hiScoreText;
     hiScoreText.setFont(font);
     hiScoreText.setCharacterSize(30);
@@ -204,7 +220,7 @@ Initialize
     s << "Hi Score: " << hiScore;
     hiScoreText.setString(s.str());
 
-    // Zombie remaining
+    // Text(dynamic): Remaining Zombies
     Text zombiesRemainingText;
     zombiesRemainingText.setFont(font);
     zombiesRemainingText.setCharacterSize(30);
@@ -212,7 +228,7 @@ Initialize
     zombiesRemainingText.setPosition(1200, 800);
     zombiesRemainingText.setString("Zombies: 100");
 
-    // Wave number
+    // Text(dynamic): Wave number
     int wave = 0;
     Text waveNumberText;
     waveNumberText.setFont(font);
@@ -221,18 +237,19 @@ Initialize
     waveNumberText.setPosition(1000, 700);
     waveNumberText.setString("Wave: 0");
 
-    // Health bar
+    // Health bar, size set via healthBar.setSize(x, y)
     RectangleShape healthBar;
     healthBar.setFillColor(Color::Red);
     healthBar.setPosition(450, 800);
+    
 
-    // when did we last update the HUD
+    // number of frames since last HUD update
     int framesSinceLastHUDUpdate = 0;
 
-    // time of last update
+    // wall clock time since last HUD update
     Time timeSinceLastUpdate;
 
-    // how often to update the HUD
+    // every 1000 frames, update the HUD once
     int fpsMeasurementFrameInterval = 1000;
 
     // SoundBuffer to hold the audio, Sound to play the audio
@@ -277,7 +294,9 @@ Initialize
 
     while(window.isOpen())
     {
+        
         Event event;
+        // Handle the input: Enter
         while(window.pollEvent(event))
         {
             if(event.type == Event::KeyPressed)
@@ -306,7 +325,7 @@ Initialize
                     bulletsSpare  = 24;
                     bulletsInClip = 6;
                     clipSize      = 6;
-                    fireRate      = 1;
+                    fireRate      = 1; // initial value is 1
                     player.resetPlayerStats();
                 }
 
@@ -339,11 +358,14 @@ Initialize
             }
         } // end event polling
 
+        // HANDLE the input: Escape
         if(Keyboard::isKeyPressed(Keyboard::Escape))
         {
             window.close();
         }
 
+
+        // HANDLE the input:  LEFT RIGHT UP DOWN, Shoot
         if(state == State::PLAYING)
         {
             if(Keyboard::isKeyPressed(Keyboard::W))
@@ -385,8 +407,11 @@ Initialize
             // fire a bullet: left mouse click
             if(Mouse::isButtonPressed(Mouse::Left))
             {
+                // fireRate = 1; shortest gun shot interval: 1s
+                // fireRate = 2; shortest gun shot interval: 0.5s
+                // lastPressed: last time shoot the gun
                 if(gameTimeTotal.asMilliseconds() - lastPressed.asMilliseconds() > 1000 / fireRate 
-                   && bulletsInClip > 0) //?
+                   && bulletsInClip > 0) 
                 {
                     bullets[currentBullet].shoot(player.getCenter().x, player.getCenter().y,
                                                  mouseWorldPosition.x, mouseWorldPosition.y);
@@ -401,46 +426,63 @@ Initialize
                 }
             }
 
-
         } // end WSAD
 
 
+        // HANDLE the input: click number to trigger LEVELING_UP -> PLAYING
+        // Setup the game: create bg, player, zombie, etc
+        // Game starts from the end player point of view
         if(state == State::LEVELING_UP)
         {
             LOG_INFO("Enter State: LEVELING_UP");
             if(event.key.code == Keyboard::Num1)
             {
-                fireRate++;
+                fireRate++; 
                 state = State::PLAYING;
-                LOG_INFO("Set State: PLAYING");
+                LOG_INFO("Set state: PLAYING");
+                LOG_INFO("Cick 1: increase fire rate");
+
             }
             if(event.key.code == Keyboard::Num2)
             {
                 clipSize += clipSize;
                 state = State::PLAYING;
+                LOG_INFO("Set state: PLAYING");
+                LOG_INFO("Cick 2: doucle clip size");
             }
             if(event.key.code == Keyboard::Num3)
             {
                 player.upgradeHealth();
                 state = State::PLAYING;
+                LOG_INFO("Set state: PLAYING");
+                LOG_INFO("Cick 3: upgrade health");
             }
             if(event.key.code == Keyboard::Num4)
             {
-                healthPickup.upgrade();   
+                player.upgradeSpeed();
                 state = State::PLAYING;
+                LOG_INFO("Set state: PLAYING");
+                LOG_INFO("Cick 4: increase speed");
             }
             if(event.key.code == Keyboard::Num5)
             {
-                ammoPickup.upgrade();
+                healthPickup.upgrade();   
                 state = State::PLAYING;
+                LOG_INFO("Set state: PLAYING");
+                LOG_INFO("Cick 5: upgrade health pickup ");
             }
             if(event.key.code == Keyboard::Num6)
             {
+                ammoPickup.upgrade();
                 state = State::PLAYING;
+                LOG_INFO("Set state: PLAYING");
+                LOG_INFO("Cick 6: upgrade ammo pickup");
             }
+
             
             if(state == State::PLAYING)
             {
+                // The first time state change to PLAYING(triggered by click Num1 ~ Num6)
                 LOG_INFO("Enter state: PLAYING, and Create Zombies");
                 wave++;
                 arena.width  = 500 * wave;
@@ -448,19 +490,18 @@ Initialize
                 arena.left   = 0;
                 arena.top    = 0;
                 int tileSize = createBackground(background, arena);
-
                 player.spawn(arena, resolution, tileSize);  // arena is smaller than resolution
 
                 healthPickup.setArena(arena);
                 ammoPickup.setArena(arena);
 
-
                 numZombies = 5 * wave;
+
                 delete[] zombies;
                 zombies = createHorde(numZombies, arena);
                 numZombiesAlive = numZombies;
 
-                LOG_INFO("Play powerup sound"); 
+                LOG_INFO("Play powerup sound"); // from end player point of view, game begins
                 powerup.play();
 
                 clock.restart();
@@ -470,23 +511,24 @@ Initialize
 
 
 
-        // update
+        // UPDATE the Scene - State: PLAYING
         if(state == State::PLAYING)
         {
             LOG_INFO("Enter State: PLAYING");
-            Time dt = clock.restart();
+            Time dt = clock.restart(); // time elapsed since last frame
             gameTimeTotal += dt;
             float dtAsSeconds = dt.asSeconds();
 
             LOG_INFO("Set Crosshair");
 
             /*
-              ----------- why cannot do spriteCrosshair.setPosition(Mouse::getPosition()); -----------
-
-
+              ----------- why cannot do spriteCrosshair.setPosition(Mouse::getPosition()); ----------- 
+            <sprite>.setPosition(<world coordinates>);
+            <object>.getPosition(window) returns screen coordinates
+            To change screen coordinates to world coordinates, call window.mapPixelToCoords(pixelPos, view); 
             */
-            mouseScreenPosition = Mouse::getPosition();
-            mouseWorldPosition  = window.mapPixelToCoords(Mouse::getPosition(), mainView);
+            mouseScreenPosition = Mouse::getPosition();  // screen coordinate
+            mouseWorldPosition  = window.mapPixelToCoords(Mouse::getPosition(), mainView); // world coordinate
             spriteCrosshair.setPosition(mouseWorldPosition);
 
             player.update(dtAsSeconds, Mouse::getPosition());
@@ -588,10 +630,10 @@ Initialize
 
             healthBar.setSize(Vector2f(player.getHealth() * 3, 70));
 
-            timeSinceLastUpdate += dt;
+            timeSinceLastUpdate += dt;  // record the wallclock time since last HUD update
+            framesSinceLastHUDUpdate++; // record the number of frames since last HUD update 
 
-            framesSinceLastHUDUpdate++;
-            if(framesSinceLastHUDUpdate > fpsMeasurementFrameInterval)
+            if(framesSinceLastHUDUpdate > fpsMeasurementFrameInterval) // every 1000 frames, update HUD once
             {
                 // update game HUD(heads-up display) text
                 LOG_INFO("Update game Heads-up display");
@@ -616,6 +658,7 @@ Initialize
                 ssZombiesAlive << "Zombies: " << numZombiesAlive;
                 zombiesRemainingText.setString(ssZombiesAlive.str());
 
+                // after each HUD update, reset
                 framesSinceLastHUDUpdate = 0;
                 timeSinceLastUpdate = Time::Zero; // Time::Zero: time duration of 0
             }
@@ -623,7 +666,7 @@ Initialize
 
         } // end Playing
 
-        // draw
+        // Draw the scene - State: PLAYING
         if(state == State::PLAYING)
         {
             window.clear();
@@ -674,8 +717,6 @@ Initialize
             window.draw(healthBar);
             window.draw(waveNumberText);
             window.draw(zombiesRemainingText);
-
-
         }
 
         if(state == State::LEVELING_UP)
@@ -683,21 +724,21 @@ Initialize
             LOG_INFO("Level up");
             window.draw(spriteGameOver);
             window.draw(levelUpText);
-
         }
+
         if(state == State::PAUSED)
         {
             LOG_INFO("PAUSED");
             window.draw(pausedText);
         }
+
         if(state == State::GAME_OVER)
         {
             LOG_INFO("GAME OVER");
             window.draw(spriteGameOver);
             window.draw(gameOverText);
             window.draw(scoreText);
-            window.draw(hiScoreText);
-            
+            window.draw(hiScoreText);    
         }
         window.display();
 
