@@ -30,6 +30,21 @@ using namespace sf;
 
 int main()
 {
+
+/*
+================================================================================================================
+Initialize 
+1. log
+2. window(RenderWindow), views(View), arena(IntRect)
+3. mouse, crosshair
+4. player, zombies, bullets
+5. pickups
+6. text, score
+7. healthBar
+8. sound
+================================================================================================================
+*/    
+
     Logger::init("log/zombie.log", LogLevel::INFO);
     //Logger::setLevel(LogLevel::DEBUG);
     LOG_INFO("Game starts");
@@ -48,12 +63,34 @@ int main()
     resolution.y = VideoMode::getDesktopMode().height;
 
     //std::cerr << "resolution: " << resolution.x << " , " << resolution.y << std::endl; // needs to include <iostream>
+    
+    /*  
+    ------ window, view   -----
+    RenderWindow| similar to physical world | screen coordinates(pixels)| actions: setView, draw..    
+    View        | similar to camera         | world coordinates         | actions: setCenter, zoom, setSize
+
+    btw, 
+    <sprite>.setPosition(<world coordinates>);
+    <object>.getPosition(window) returns screen coordinates
+    to change screen coordinates to world coordinates, call window.mapPixelToCoords(pixelPos, view); 
+
+
+    ------  mainView vs. hudView ------
+    mainView: moves through the world
+    hudView: UI elements stay fixed on the screen
+
+    --------  arena vs. view -------
+    arena: define the logical boundaries of the gameplay; its type is IntRect
+    view: constructed via FloatRect
+    */
+    
     RenderWindow window(VideoMode(resolution.x, resolution.y), "Zombie Arena"); // Style::Fullscreen);
     View mainView(FloatRect(0, 0, resolution.x, resolution.y));
     Clock clock;
-    Time  gameTimeTotal;
-    Vector2f mouseWorldPosition;
-    Vector2i mouseScreenPosition;
+    Time  gameTimeTotal; 
+
+    Vector2f mouseWorldPosition;    // world coordinates,  used in view space
+    Vector2i mouseScreenPosition;   // screen coordinates, used in window space
 
     Player player;
     IntRect arena;
@@ -442,9 +479,14 @@ int main()
             float dtAsSeconds = dt.asSeconds();
 
             LOG_INFO("Set Crosshair");
+
+            /*
+              ----------- why cannot do spriteCrosshair.setPosition(Mouse::getPosition()); -----------
+
+
+            */
             mouseScreenPosition = Mouse::getPosition();
             mouseWorldPosition  = window.mapPixelToCoords(Mouse::getPosition(), mainView);
-
             spriteCrosshair.setPosition(mouseWorldPosition);
 
             player.update(dtAsSeconds, Mouse::getPosition());
@@ -585,6 +627,7 @@ int main()
         if(state == State::PLAYING)
         {
             window.clear();
+            // Activate mainView, then draw background, player, zombies, bullets, pickups and crosshair.
             window.setView(mainView);
             LOG_INFO("Draw background");
             window.draw(background, &textureBackground);
@@ -621,6 +664,8 @@ int main()
             LOG_INFO("Draw crosshair");
             window.draw(spriteCrosshair);
 
+
+            // Activate hudView, then draw hudView, draw AmmoIcon, Text, healthBar
             window.setView(hudView);
             window.draw(spriteAmmoIcon);
             window.draw(ammoText);
